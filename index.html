@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cubação de Pilhas de Agregados</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d2329;--mut:#6a737d;--line:#e2e0d9;--acc:#b5651d;--acc2:#2f6f8f;--ok:#2e7d4f;--warn:#b7791f;--bad:#b23b3b}
+@media (prefers-color-scheme:dark){:root{--bg:#15181b;--card:#1d2125;--ink:#e8e6e1;--mut:#9aa3ab;--line:#2e3338;--acc:#e0954f;--acc2:#6fb1d1}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+header{padding:22px 28px 14px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0 0 4px;font-weight:600}header p{margin:0;color:var(--mut)}
+main{max-width:1280px;margin:0 auto;padding:20px 28px 60px;display:grid;gap:18px}
+.card{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 12px;font-weight:600}
+.grid2{display:grid;grid-template-columns:minmax(320px,1fr) 1.3fr;gap:18px}@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:.15s}
+.drop.on,.drop:hover{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 6%,transparent)}
+.drop b{display:block;font-size:15px;margin-bottom:4px}.drop span{color:var(--mut);font-size:12.5px}
+label{font-size:12px;color:var(--mut);display:block;margin-bottom:4px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+button{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-weight:600;color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}td.n,th.n{text-align:right;font-family:"IBM Plex Mono",monospace}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px}.kpi .v{font:500 24px "IBM Plex Mono",monospace}.kpi .l{font-size:12px;color:var(--mut)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:color-mix(in srgb,var(--acc2) 15%,transparent);color:var(--acc2)}
+.tag.w{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}.tag.b{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+canvas{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.note{font-size:12.5px;color:var(--mut)}.alerts div{font-size:12.5px;padding:6px 10px;border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);margin-top:6px;border-radius:0 6px 6px 0}
+.fmtbox{margin-top:16px;border:1px solid var(--line);border-radius:8px;padding:14px;background:color-mix(in srgb,var(--acc2) 4%,transparent)}
+.fmtbox h3{margin:0;font-size:13px;font-weight:600}
+table.prev{font-size:12px;margin-top:4px}table.prev td{font-family:"IBM Plex Mono",monospace;color:var(--mut);padding:4px 6px}table.prev th{padding:4px}table.prev select{padding:4px 6px;font-size:12px;min-width:96px}
+table.prev th.r-N select,table.prev th.r-E select,table.prev th.r-Z select{border-color:var(--acc2);color:var(--acc2);font-weight:600}table.prev th.r-D select{border-color:var(--acc);color:var(--acc);font-weight:600}
+table.prev td.r-N,table.prev td.r-E,table.prev td.r-Z{color:var(--acc2)}table.prev td.r-D{color:var(--acc)}
+#tbl th:nth-child(3),#tbl td:nth-child(3),#tbl th:nth-child(4),#tbl td:nth-child(4),#hist th:nth-child(4),#hist td:nth-child(4),#hist th:nth-child(5),#hist td:nth-child(5),#clsTbl th:nth-child(2),#clsTbl td:nth-child(2),#grpBox,#hf_grp{display:none}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tabs button.on{border-color:var(--acc);color:var(--acc)}
+details summary{cursor:pointer;color:var(--mut);font-size:12.5px}
+.legend{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut);margin-top:6px}.legend i{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#2b5c8a,#3f9a8a,#c9b84a,#d0742e,#a8322d)}
+#msg{font-size:12.5px;margin-top:8px;min-height:18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Cubação de Pilhas de Agregados <span id="roleTag" class="tag" style="vertical-align:middle;margin-left:8px;font-size:12px">perfil: …</span></h1>
+  <p>Envie o levantamento topográfico (TXT/CSV, em qualquer ordem de colunas — configure em <i>Formato do levantamento</i>) de cada pilha e obtenha o volume por agregado. Pontos <code>pe</code> definem o pé/base; os demais (<code>crista</code>, <code>topo</code>…) definem a superfície da pilha.</p>
+</header>
+<main>
+<details class="card" id="roleBox" style="padding:12px 18px"><summary style="font-size:13px;color:var(--ink)"><b>Perfis de acesso</b> — <span id="roleMsg">verificando seu perfil…</span></summary>
+  <div style="overflow:auto;margin-top:10px"><table style="max-width:900px"><thead><tr><th>Ação</th><th>LEITOR</th><th>EDITOR</th><th>ADM</th></tr></thead><tbody>
+    <tr><td>Carregar levantamentos, calcular volumes, ver planta e 3D</td><td>✔</td><td>✔</td><td>✔</td></tr>
+    <tr><td>Ver histórico, copiar tabela / baixar CSV</td><td>✔</td><td>✔</td><td>✔</td></tr>
+    <tr><td>Salvar cubações no histórico</td><td>—</td><td>✔</td><td>✔</td></tr>
+    <tr><td>Salvar formatos de levantamento</td><td>—</td><td>✔</td><td>✔</td></tr>
+    <tr><td>Criar e editar tipos de agregado / densidade padrão</td><td>—</td><td>✔</td><td>✔</td></tr>
+    <tr><td>Excluir registros do histórico, formatos e tipos de agregado</td><td>—</td><td>—</td><td>✔</td></tr>
+    <tr><td>Definir o perfil de cada pessoa (no compartilhamento do artefato)</td><td>—</td><td>—</td><td>✔</td></tr>
+  </tbody></table></div>
+  <div class="note" style="margin-top:8px">O perfil vem da permissão dada a cada pessoa no compartilhamento desta página: <b>LEITOR</b> = pode visualizar · <b>EDITOR</b> = pode contribuir · <b>ADM</b> = pode editar (e o proprietário).</div>
+</details>
+<div class="grid2">
+  <section class="card">
+    <h2>1 · Levantamento</h2>
+    <div class="drop" id="drop"><b>Arraste os arquivos aqui ou clique para selecionar</b><span>Um arquivo por pilha · o agregado é lido do nome (ex.: AREIA_2026-11-11…txt, BRITA1_…, PO_DE_PEDRA_…)</span>
+      <input type="file" id="file" multiple accept=".txt,.csv,.xyz" hidden></div>
+    <div class="row">
+      <div><label>Método de base (superfície inferior)</label>
+        <select id="base">
+          <option value="tin">TIN dos pontos de pé (recomendado)</option>
+          <option value="fit">Plano ajustado aos pontos de pé</option>
+          <option value="mean">Plano horizontal na cota média do pé</option>
+          <option value="min">Plano horizontal na cota mínima do pé</option>
+        </select></div>
+      <div><label>Códigos do pé (separados por vírgula)</label><input id="toecodes" value="pe,pé,pd,base"></div>
+    </div>
+    <div class="fmtbox">
+      <h3>Formato do levantamento</h3>
+      <div class="row" style="margin-top:6px">
+        <div><label>Formato salvo</label><select id="f_preset"></select></div>
+        <div><label>Separador de colunas</label><select id="f_delim"><option value="auto">Automático</option><option value=",">Vírgula ( , )</option><option value=";">Ponto e vírgula ( ; )</option><option value="tab">Tabulação</option><option value="space">Espaço</option></select></div>
+        <div><label>Separador decimal</label><select id="f_dec"><option value=".">Ponto (838.813)</option><option value=",">Vírgula (838,813)</option></select></div>
+        <div><label>Linhas de cabeçalho a ignorar</label><input type="number" id="f_skip" min="0" value="0"></div>
+      </div>
+      <label style="margin-top:12px">Defina o que é cada coluna — editando o formato do arquivo <b id="f_src">—</b> (clique numa pilha para ver/ajustar o formato dela; novos arquivos usam o formato atual):</label>
+      <div style="overflow:auto"><table id="f_prev" class="prev"></table></div>
+      <div id="f_info" class="note" style="margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <input id="f_name" placeholder="Nome do formato (ex.: Estação Leica – PNEZD)" style="flex:1;min-width:200px">
+        <button id="f_save">Salvar formato</button><button id="f_del">Excluir</button>
+      </div>
+      <div id="pend" class="alerts"></div>
+    </div>
+    <div class="row">
+      <div><label>Data do levantamento</label><input type="date" id="dt"></div>
+      <div><label>Obra / Local</label><input id="loc" value="Ibiapaba"></div>
+    </div>
+    <div id="msg"></div>
+    <div class="alerts" id="alerts"></div>
+  </section>
+  <section class="card">
+    <h2>2 · Planta da pilha <span id="plantaName" class="tag" style="margin-left:6px"></span></h2>
+    <div class="tabs" id="tabs"></div>
+    <canvas id="cv" width="900" height="520"></canvas>
+    <div class="legend"><span id="zmin">—</span><i></i><span id="zmax">—</span><span style="margin-left:10px">● pé &nbsp; · superfície</span></div>
+  </section>
+</div>
+
+<section class="card">
+  <h2>2b · Vista 3D <span id="name3d" class="tag" style="margin-left:6px"></span></h2>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:10px">
+    <div style="width:220px"><label>Exagero vertical: <b id="exv">1,0×</b></label><input type="range" id="ex" min="1" max="4" step="0.5" value="1" style="padding:0"></div>
+    <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="c_base" checked style="width:auto"> Base (TIN do pé)</label>
+    <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="c_wire" checked style="width:auto"> Malha TIN</label>
+    <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="c_pts" checked style="width:auto"> Pontos</label>
+    <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="c_rot" style="width:auto"> Girar</label>
+    <div><label>Mostrar</label><select id="v_show" style="width:auto"><option value="all">Todas as pilhas</option><option value="sel">Só a selecionada</option></select></div>
+    <div><label>Colorir por</label><select id="v_col" style="width:auto"><option value="mat">Tipo de agregado</option><option value="cota">Cota</option></select></div>
+    <button id="reset3d">Vista inicial</button>
+  </div>
+  <div id="v3d" style="position:relative;height:520px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)">
+    <div id="hud3d" style="position:absolute;left:12px;top:10px;font:12px 'IBM Plex Mono',monospace;color:var(--mut);pointer-events:none;z-index:2"></div>
+    <div style="position:absolute;right:12px;bottom:10px;font-size:11.5px;color:var(--mut);pointer-events:none;z-index:2">clique numa pilha: selecionar e classificar · arrastar: girar · botão direito: mover · roda: zoom</div>
+    <div id="cls3d" style="position:absolute;right:12px;top:10px;width:230px;z-index:3;background:color-mix(in srgb,var(--card) 92%,transparent);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px"></div>
+    <div id="no3d" class="note" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center">Visualização 3D indisponível neste navegador.</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>3 · Volume por agregado (levantamento atual)</h2>
+  <div id="grpBox"><label style="margin:0">Totalizar por</label>
+    <select id="grp" style="width:auto"><option value="mat">Tipo de agregado</option><option value="grupo">Grupo</option><option value="sit">Situação</option></select></div>
+  <div class="kpis" id="kpis"></div>
+  <div style="overflow:auto;margin-top:14px"><table id="tbl"><thead><tr>
+    <th>Pilha</th><th>Tipo de agregado</th><th>Grupo</th><th>Situação</th><th>Arquivo</th><th class="n">Pontos</th><th class="n">Área base (m²)</th><th class="n">Altura máx (m)</th><th class="n">Volume (m³)</th><th class="n">Faixa métodos (m³)</th><th class="n">Dens. (t/m³)</th><th class="n">Massa (t)</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+    <button class="pri" id="save" disabled>Salvar no histórico</button>
+    <button id="copy" disabled>Copiar tabela (Excel)</button>
+    <button id="dl" disabled hidden>Baixar CSV</button>
+  </div>
+  <details style="margin-top:12px" id="clsDet"><summary>Gerenciar classificações (tipos de agregado e densidade padrão)</summary>
+    <div class="note" style="margin:8px 0">Lista usada no campo "Tipo de agregado". O grupo é atribuído automaticamente pelo tipo. A densidade padrão (solta, t/m³) é opcional — informe o valor de ensaio da obra; ela preenche as pilhas daquele tipo que estiverem sem densidade.</div>
+    <div style="overflow:auto"><table id="clsTbl" style="max-width:720px"><thead><tr><th>Tipo de agregado</th><th>Grupo</th><th class="n">Dens. padrão (t/m³)</th><th></th></tr></thead><tbody></tbody></table></div>
+    <button id="clsAdd" style="margin-top:8px">+ Adicionar tipo</button>
+  </details>
+  <details style="margin-top:12px"><summary>Metodologia</summary><div class="note" style="margin-top:8px">
+    Superfície da pilha: triangulação de Delaunay (TIN) com todos os pontos, recortada pelo polígono do pé (pontos de pé ligados em ordem de numeração; se o polígono se autointerceptar, a ordem passa a ser angular em torno do centróide). Pontos duplicados (mesmas coordenadas) são removidos.
+    Volume = Σ área_planta(triângulo) × média das alturas dos 3 vértices acima da base (prismoide triangular). Base TIN do pé = interpolação linear sobre a triangulação só dos pontos de pé — equivale a "volume entre superfícies" no Civil 3D com a base gerada pelo pé.
+    A coluna "Faixa métodos" mostra o resultado com os quatro critérios de base; diferença &gt; 3% entre TIN e plano ajustado indica terreno de apoio irregular — validar em campo. Massa é calculada apenas se a densidade aparente (solta) for informada.
+  </div></details>
+</section>
+
+<section class="card">
+  <h2>4 · Histórico de cubações</h2>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap"><label style="margin:0">Filtrar</label>
+    <select id="hf_mat" style="width:auto"></select><select id="hf_grp" style="width:auto"></select></div>
+  <div id="histNote" class="note">Carregando histórico…</div>
+  <div style="overflow:auto"><table id="hist"><thead><tr><th>Data</th><th>Pilha</th><th>Tipo</th><th>Grupo</th><th>Situação</th><th>Local</th><th class="n">Volume (m³)</th><th class="n">Δ vs anterior (m³)</th><th class="n">Massa (t)</th><th>Método</th><th>Arquivo</th><th></th></tr></thead><tbody></tbody></table></div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- Delaunay (Bowyer–Watson) ----------
+function delaunay(P){
+  const n=P.length;let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+  for(const p of P){minx=Math.min(minx,p[0]);miny=Math.min(miny,p[1]);maxx=Math.max(maxx,p[0]);maxy=Math.max(maxy,p[1]);}
+  const cx=(minx+maxx)/2,cy=(miny+maxy)/2,d=Math.max(maxx-minx,maxy-miny)*20+1;
+  // local coords for precision
+  const V=P.map(p=>[p[0]-cx,p[1]-cy]);V.push([-d,-d],[d,-d],[0,d]);
+  let T=[[n,n+1,n+2]];
+  const cc=t=>{const[a,b,c]=t.map(i=>V[i]);const D=2*(a[0]*(b[1]-c[1])+b[0]*(c[1]-a[1])+c[0]*(a[1]-b[1]));
+    const A=a[0]*a[0]+a[1]*a[1],B=b[0]*b[0]+b[1]*b[1],C=c[0]*c[0]+c[1]*c[1];
+    const x=(A*(b[1]-c[1])+B*(c[1]-a[1])+C*(a[1]-b[1]))/D,y=(A*(c[0]-b[0])+B*(a[0]-c[0])+C*(b[0]-a[0]))/D;return[x,y,(a[0]-x)**2+(a[1]-y)**2];};
+  let C=T.map(cc);
+  for(let i=0;i<n;i++){const p=V[i];const bad=[],keepT=[],keepC=[];
+    for(let k=0;k<T.length;k++){const c=C[k];if((p[0]-c[0])**2+(p[1]-c[1])**2<c[2]*(1-1e-12))bad.push(T[k]);else{keepT.push(T[k]);keepC.push(c);}}
+    const em=new Map();for(const t of bad)for(const[e1,e2]of[[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]]){const k=e1<e2?e1+'_'+e2:e2+'_'+e1;em.set(k,em.has(k)?null:[e1,e2]);}
+    T=keepT;C=keepC;for(const e of em.values())if(e){const t=[e[0],e[1],i];T.push(t);C.push(cc(t));}}
+  return T.filter(t=>t[0]<n&&t[1]<n&&t[2]<n);
+}
+const triArea=(a,b,c)=>0.5*Math.abs((b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]));
+function inPoly(x,y,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const[xi,yi]=poly[i],[xj,yj]=poly[j];if(((yi>y)!=(yj>y))&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
+function segX(a,b,c,d){const o=(p,q,r)=>Math.sign((q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]));return o(a,b,c)*o(a,b,d)<0&&o(c,d,a)*o(c,d,b)<0;}
+function selfInt(poly){const n=poly.length;for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){if(i===0&&j===n-1)continue;if(segX(poly[i],poly[(i+1)%n],poly[j],poly[(j+1)%n]))return true;}return false;}
+function baryZ(x,y,a,b,c){const D=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);if(Math.abs(D)<1e-12)return null;
+  const l1=((b[1]-c[1])*(x-c[0])+(c[0]-b[0])*(y-c[1]))/D,l2=((c[1]-a[1])*(x-c[0])+(a[0]-c[0])*(y-c[1]))/D,l3=1-l1-l2;
+  return(l1>=-1e-9&&l2>=-1e-9&&l3>=-1e-9)?l1*a[2]+l2*b[2]+l3*c[2]:null;}
+
+// ---------- parse & compute ----------
+const MAT={AREIA:{n:'Areia',d:''},BRITA0:{n:'Brita 0',d:''},BRITA1:{n:'Brita 1',d:''},BRITA2:{n:'Brita 2',d:''},BRITA3:{n:'Brita 3',d:''},PEDRISCO:{n:'Pedrisco',d:''},PO:{n:'Pó de pedra',d:''},RACHAO:{n:'Rachão',d:''},BGS:{n:'BGS',d:''},CASCALHO:{n:'Cascalho',d:''},SOLO:{n:'Solo',d:''},ARGILA:{n:'Argila',d:''}};
+const GRUPOS=['Agregado miúdo','Agregado graúdo','Mistura / base','Solo','Outros'];const SITS=['Em estoque','Em consumo','Bloqueada','Encerrada'];
+let CLASSES=[['Areia',0],['Pó de pedra',0],['Pedrisco',1],['Brita 0',1],['Brita 1',1],['Brita 2',1],['Brita 3',1],['Rachão',1],['BGS',2],['Cascalho',2],['Solo',3],['Argila',3]].map(([nome,g])=>({nome,grupo:GRUPOS[g],dens:''}));
+const cls=n=>CLASSES.find(c=>c.nome.toLowerCase()===String(n).toLowerCase());const grupoOf=n=>{const c=cls(n);return c?c.grupo:'Não classificado';};
+const esc=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+function matFromName(fn){let s=fn.replace(/^[0-9a-f]{8}-/i,'').replace(/\.[^.]+$/,'');
+  const dm=s.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);const date=dm?`${dm[1]}-${dm[2]}-${dm[3]}`:'';
+  let name=s.replace(/[_\- ]?\d{4}[-_]\d{2}[-_]\d{2}.*$/,'').replace(/[_\-]+/g,' ').trim()||s;
+  const key=name.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]/g,'');
+  for(const k in MAT)if(key.startsWith(k))return{name:k==='PO'&&!key.startsWith('POD')&&key!=='PO'?name:MAT[k].n,date};
+  return{name:name.charAt(0).toUpperCase()+name.slice(1).toLowerCase(),date};}
+const ROLES={X:'Ignorar',P:'Ponto',N:'Norte (Y)',E:'Este (X)',Z:'Cota',D:'Descrição'};
+const PRESETS=[{name:'P, Descrição, N, E, Cota (padrão)',delim:'auto',dec:'.',skip:0,cols:['P','D','N','E','Z'],fixed:1},
+ {name:'P, N, E, Cota, Descrição (PNEZD)',delim:'auto',dec:'.',skip:0,cols:['P','N','E','Z','D'],fixed:1},
+ {name:'P, E, N, Cota, Descrição (PENZD)',delim:'auto',dec:'.',skip:0,cols:['P','E','N','Z','D'],fixed:1},
+ {name:'P, Descrição, E, N, Cota',delim:'auto',dec:'.',skip:0,cols:['P','D','E','N','Z'],fixed:1},
+ {name:'N, E, Cota (sem descrição)',delim:'auto',dec:'.',skip:0,cols:['N','E','Z'],fixed:1},
+ {name:'E, N, Cota (sem descrição)',delim:'auto',dec:'.',skip:0,cols:['E','N','Z'],fixed:1}];
+let FMT={...PRESETS[0],cols:[...PRESETS[0].cols]},userFmts=[];
+function splitLine(line,f){const t=line.trim();if(!t)return[];let d=f.delim;
+  if(d==='auto')d=t.includes(';')?';':t.includes('\t')?'tab':(t.includes(',')&&f.dec==='.')?',':'space';
+  const re=d==='tab'?/\t/:d==='space'?/\s+/:d===';'?/;/:/,/;return t.split(re).map(s=>s.trim().replace(/^"|"$/g,''));}
+const num=(v,f)=>{if(v==null)return NaN;v=String(v).trim();if(f.dec===',')v=v.replace(/\./g,'').replace(',','.');return /^[-+]?\d*\.?\d+(e[-+]?\d+)?$/i.test(v)?parseFloat(v):NaN;};
+function parse(text,f){f=f||FMT;const rows=[];let skipped=0;const toe=$('toecodes').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const ix=r=>f.cols.indexOf(r);const iP=ix('P'),iN=ix('N'),iE=ix('E'),iZ=ix('Z'),iD=ix('D');
+  if(iN<0||iE<0||iZ<0)throw new Error('Defina as colunas de Norte, Este e Cota no formato do levantamento.');
+  const lines=text.split(/\r?\n/).slice(f.skip||0);
+  lines.forEach((line,k)=>{const c=splitLine(line,f);if(!c.length)return;const n=num(c[iN],f),e=num(c[iE],f),z=num(c[iZ],f);
+    if(!isFinite(n)||!isFinite(e)||!isFinite(z)){skipped++;return;}const code=iD>=0?(c[iD]||'').toLowerCase():'';
+    rows.push({id:iP>=0?c[iP]:String(k+1+(f.skip||0)),code,x:e,y:n,z,toe:iD>=0&&toe.includes(code)});});
+  if(iD<0&&rows.length>=3){const h=hull(rows);h.forEach(r=>r.toe=true);rows.noDesc=true;}
+  rows.skipped=skipped;return rows;}
+function hull(R){const P=[...R].sort((a,b)=>a.x-b.x||a.y-b.y);const cr=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);const lo=[],up=[];
+  for(const p of P){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(const p of P.reverse()){while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  return lo.slice(0,-1).concat(up.slice(0,-1));}
+function checkRows(rows){const w=[];if(rows.noDesc)w.push('Arquivo sem coluna de descrição: o pé foi definido pelos pontos do contorno externo (envoltória convexa). Pilhas com contorno côncavo podem ter volume superestimado — prefira levantar com código de pé.');
+  const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1];};const mn=med(rows.map(r=>r.y)),me=med(rows.map(r=>r.x));
+  if(mn>1e6&&me<1e6){}else if(me>1e6&&mn<1e6)w.push('Valores de Este maiores que de Norte — em UTM no hemisfério sul o Norte tem 7 dígitos (≈9.5 milhões). Verifique se as colunas N e E não estão invertidas.');
+  const zs=rows.map(r=>r.z);if(Math.max(...zs)-Math.min(...zs)>50)w.push('Amplitude de cotas acima de 50 m — verifique se a coluna de cota está correta.');
+  if(rows.skipped)w.push(`${rows.skipped} linha(s) ignorada(s) por não conterem N, E e cota numéricos (cabeçalho ou linhas inválidas).`);return w;}
+function compute(rows){
+  const warn=[];const seen=new Map();const pts=[];let dup=0;
+  for(const r of rows){const k=r.x.toFixed(3)+'_'+r.y.toFixed(3);if(seen.has(k)){dup++;const o=seen.get(k);if(Math.abs(o.z-r.z)>0.01)warn.push(`Ponto ${r.id} com mesma posição do ${o.id} e cota diferente (${o.z.toFixed(3)} × ${r.z.toFixed(3)}) — mantido o primeiro.`);continue;}seen.set(k,r);pts.push(r);}
+  if(dup)warn.push(`${dup} ponto(s) duplicado(s) removido(s).`);
+  const toe=pts.filter(p=>p.toe);if(toe.length<3)throw new Error('Menos de 3 pontos de pé — verifique os códigos do pé.');
+  let poly=toe.map(p=>[p.x,p.y]);
+  if(selfInt(poly)){const cx=poly.reduce((s,p)=>s+p[0],0)/poly.length,cy=poly.reduce((s,p)=>s+p[1],0)/poly.length;
+    poly=[...poly].sort((a,b)=>Math.atan2(a[1]-cy,a[0]-cx)-Math.atan2(b[1]-cy,b[0]-cx));warn.push('Polígono do pé se autointerceptava na ordem de numeração — reordenado angularmente. Conferir contorno na planta.');}
+  const out=pts.filter(p=>!p.toe&&!inPoly(p.x,p.y,poly));if(out.length)warn.push(`${out.length} ponto(s) de superfície fora do contorno do pé (${out.map(p=>p.id).slice(0,8).join(', ')}${out.length>8?'…':''}) — verificar levantamento do pé.`);
+  const T=delaunay(pts.map(p=>[p.x,p.y]));
+  const inside=T.filter(t=>{const cx=(pts[t[0]].x+pts[t[1]].x+pts[t[2]].x)/3,cy=(pts[t[0]].y+pts[t[1]].y+pts[t[2]].y)/3;return inPoly(cx,cy,poly);});
+  const tz=toe.map(p=>p.z);const zmean=tz.reduce((a,b)=>a+b,0)/tz.length,zmin=Math.min(...tz),zmax=Math.max(...tz);
+  // plane fit
+  const ls=(()=>{let S=[[0,0,0],[0,0,0],[0,0,0]],b=[0,0,0];const x0=toe[0].x,y0=toe[0].y;for(const p of toe){const v=[p.x-x0,p.y-y0,1];for(let i=0;i<3;i++){b[i]+=v[i]*p.z;for(let j=0;j<3;j++)S[i][j]+=v[i]*v[j];}}
+    const det=m=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    const D=det(S);const c=[0,1,2].map(k=>det(S.map((r,i)=>r.map((v,j)=>j===k?b[i]:v)))/D);return(x,y)=>c[0]*(x-x0)+c[1]*(y-y0)+c[2];})();
+  const tT=delaunay(toe.map(p=>[p.x,p.y])).map(t=>t.map(i=>[toe[i].x,toe[i].y,toe[i].z]));
+  const tinZ=(x,y)=>{for(const t of tT){const z=baryZ(x,y,t[0],t[1],t[2]);if(z!==null)return z;}return ls(x,y);};
+  const bases={tin:tinZ,fit:ls,mean:()=>zmean,min:()=>zmin};const vols={};let area=0;
+  const bz={};for(const k in bases)bz[k]=pts.map(p=>bases[k](p.x,p.y));
+  for(const k in bases){let v=0,neg=0;for(const t of inside){const A=triArea(...t.map(i=>[pts[i].x,pts[i].y]));const h=(t.reduce((s,i)=>s+pts[i].z-bz[k][i],0))/3;v+=A*h;if(h<0)neg+=A*h;}vols[k]=v;if(k==='tin'){area=inside.reduce((s,t)=>s+triArea(...t.map(i=>[pts[i].x,pts[i].y])),0);vols.neg=neg;}}
+  const hmax=Math.max(...pts.map((p,i)=>p.z-bz.tin[i]));
+  const dif=Math.abs(vols.tin-vols.fit)/vols.tin;if(dif>0.03)warn.push(`Diferença de ${(dif*100).toFixed(1)}% entre base TIN e plano ajustado — apoio irregular; validar critério de base.`);
+  if(vols.neg<-0.01*vols.tin)warn.push(`Há ${Math.abs(vols.neg).toFixed(1)} m³ de volume negativo (superfície abaixo da base) — pontos de crista possivelmente codificados como pé ou base muito irregular.`);
+  if(zmax-zmin>1.0)warn.push(`Desnível no pé de ${(zmax-zmin).toFixed(2)} m — preferir base TIN.`);
+  warn.unshift(...checkRows(rows));return{pts,poly,tris:inside,baseTris:tT,toeZ:{mean:zmean,min:zmin,max:zmax},vols,area,hmax,warn,nRaw:rows.length};}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id);let piles=[],sel=0;
+const fmt=(v,d=2)=>v==null||!isFinite(v)?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function msg(t,c){$('msg').innerHTML=t;$('msg').style.color=c||'var(--mut)';}
+let pend=[];
+function procOne(f){const rows=parse(f.raw,f.fmt);if(rows.length<4)throw new Error(`apenas ${rows.length} ponto(s) válido(s) — confira separador, decimal e colunas`);return{rows,r:compute(rows)};}
+function reprocess(all){const tgt=all?null:prevSrc;const L=[...piles.map(p=>({...p})),...pend];piles=[];pend=[];
+  for(const f of L){if(!all&&(f.file===tgt||f.err))f.fmt=JSON.parse(JSON.stringify(FMT));try{const o=procOne(f);piles.push({...f,...o,err:null});}catch(e){pend.push({...f,err:e.message});}}
+  if(sel>=piles.length)sel=Math.max(0,piles.length-1);render();renderFmt();}
+async function handle(files){for(const f of files){const raw=await f.text();const name=f.name.replace(/^[0-9a-f]{8}-/i,'');const m=matFromName(f.name);
+  piles=piles.filter(p=>p.file!==name);pend=pend.filter(p=>p.file!==name);const rec={file:name,mat:m.name,date:m.date,dens:'',raw,fmt:JSON.parse(JSON.stringify(FMT))};
+  try{const o=procOne(rec);piles.push({...rec,...o});sel=piles.length-1;}catch(e){pend.push({...rec,err:e.message});}
+  if(m.date&&!$('dt').value)$('dt').value=m.date;prevSrc=name;}
+  render();renderFmt();}
+// ---- format UI
+let prevSrc=null;
+function allFmts(){return[...PRESETS,...userFmts];}
+function renderPresets(){const sel=$('f_preset');const L=allFmts();sel.innerHTML=L.map((f,i)=>`<option value="${i}">${f.fixed?'':'★ '}${f.name}</option>`).join('')+'<option value="custom">Personalizado (não salvo)</option>';
+  const i=L.findIndex(f=>f.delim===FMT.delim&&f.dec===FMT.dec&&+f.skip===+FMT.skip&&f.cols.join()===FMT.cols.join());sel.value=i>=0?i:'custom';$('f_del').disabled=!(i>=0&&!L[i].fixed);if(i>=0&&!L[i].fixed)$('f_name').value=L[i].name;}
+function renderFmt(){$('f_delim').value=FMT.delim;$('f_dec').value=FMT.dec;$('f_skip').value=FMT.skip;renderPresets();
+  const src=pend.find(p=>p.file===prevSrc)||piles.find(p=>p.file===prevSrc)||pend[pend.length-1]||piles[sel];$('f_src').textContent=src?src.file:'—';
+  const t=$('f_prev');if(!src){t.innerHTML='';$('f_info').textContent='';}else{
+    const lines=src.raw.split(/\r?\n/).filter(l=>l.trim());const show=lines.slice(0,Math.min(lines.length,(+FMT.skip||0)+6));
+    const rows=show.map(l=>splitLine(l,FMT));const nc=Math.max(FMT.cols.length,...rows.map(r=>r.length));while(FMT.cols.length<nc)FMT.cols.push('X');
+    const opts=v=>Object.entries(ROLES).map(([k,l])=>`<option value="${k}"${k===v?' selected':''}>${l}</option>`).join('');
+    t.innerHTML=`<tr>${Array.from({length:nc},(_,j)=>`<th class="r-${FMT.cols[j]}"><select data-c="${j}">${opts(FMT.cols[j])}</select></th>`).join('')}</tr>`+
+      rows.map((r,k)=>`<tr style="${k<(+FMT.skip||0)?'opacity:.35;text-decoration:line-through':''}">${Array.from({length:nc},(_,j)=>`<td class="r-${FMT.cols[j]}">${(r[j]??'').replace(/</g,'&lt;')}</td>`).join('')}</tr>`).join('');
+    t.querySelectorAll('select').forEach(el=>el.onchange=()=>{const j=+el.dataset.c,v=el.value;if('PNEZD'.includes(v))FMT.cols=FMT.cols.map((c,i)=>i!==j&&c===v?'X':c);FMT.cols[j]=v;trimCols();saveCur();reprocess();});
+    try{const rr=parse(src.raw,FMT);const codes={};rr.forEach(r=>{if(r.code)codes[r.code]=(codes[r.code]||0)+1;});const toe=$('toecodes').value.split(',').map(s=>s.trim().toLowerCase());
+      $('f_info').innerHTML=`<b>${rr.length}</b> pontos lidos${rr.skipped?` · ${rr.skipped} linha(s) ignorada(s)`:''}`+(Object.keys(codes).length?` · descrições: ${Object.entries(codes).map(([c,n])=>toe.includes(c)?`<b style="color:var(--acc)">${c} (${n}) = pé</b>`:`${c} (${n})`).join(', ')}`:rr.noDesc?' · sem descrição: pé = contorno externo':'');}
+    catch(e){$('f_info').innerHTML=`<span style="color:var(--bad)">${e.message}</span>`;}}
+  $('pend').innerHTML=pend.map(p=>`<div><b>${p.file}</b> não processado: ${p.err}. Ajuste o formato acima — o arquivo será reprocessado automaticamente.</div>`).join('');}
+function trimCols(){while(FMT.cols.length>1&&FMT.cols[FMT.cols.length-1]==='X')FMT.cols.pop();}
+function saveCur(){try{localStorage.setItem('cub_fmt_cur',JSON.stringify(FMT));}catch(e){}}
+function saveUser(){try{localStorage.setItem('cub_fmts',JSON.stringify(userFmts));}catch(e){}}
+$('f_preset').onchange=()=>{const v=$('f_preset').value;if(v==='custom')return;const f=allFmts()[+v];FMT={name:f.name,delim:f.delim,dec:f.dec,skip:+f.skip||0,cols:[...f.cols]};if(!f.fixed)$('f_name').value=f.name;saveCur();reprocess();};
+$('f_delim').onchange=()=>{FMT.delim=$('f_delim').value;saveCur();reprocess();};
+$('f_dec').onchange=()=>{FMT.dec=$('f_dec').value;saveCur();reprocess();};
+$('f_skip').onchange=()=>{FMT.skip=Math.max(0,parseInt($('f_skip').value)||0);saveCur();reprocess();};
+$('f_save').onclick=async()=>{const name=$('f_name').value.trim();if(!name){msg('Dê um nome ao formato antes de salvar.','var(--bad)');return;}
+  const rec={name,delim:FMT.delim,dec:FMT.dec,skip:+FMT.skip||0,cols:[...FMT.cols]};const ex=userFmts.find(f=>f.name===name);
+  if(db){const id=ex&&ex._id||('f'+Date.now().toString(36));try{await db.doc('formatos/'+id).set(rec);}catch(e){msg('Sem permissão para salvar formatos compartilhados.','var(--bad)');return;}}
+  else{if(ex)Object.assign(ex,rec);else userFmts.push({...rec,_id:'l'+Date.now()});saveUser();}
+  FMT={...rec,cols:[...rec.cols]};saveCur();renderFmt();msg(`Formato "${name}" salvo.`,'var(--ok)');};
+$('f_del').onclick=async()=>{const v=$('f_preset').value;const f=allFmts()[+v];if(!f||f.fixed)return;
+  if(db){try{await db.doc('formatos/'+f._id).delete();}catch(e){msg('Sem permissão para excluir.','var(--bad)');return;}}else{userFmts=userFmts.filter(u=>u!==f);saveUser();}
+  $('f_name').value='';renderFmt();};
+$('toecodes').addEventListener('change',()=>reprocess(true));
+function vol(p){return p.r.vols[$('base').value];}
+function render(){
+  const tb=$('tbl').querySelector('tbody');tb.innerHTML='';
+  piles.forEach((p,i)=>{const v=vol(p),vs=Object.entries(p.r.vols).filter(([k])=>k!=='neg').map(e=>e[1]);const d=parseFloat(String(p.dens).replace(',','.'));
+    const st=p.r.warn.length?`<span class="tag w">${p.r.warn.length} alerta(s)</span>`:'<span class="tag">OK</span>';
+    if(p.pilha==null)p.pilha='';if(!p.sit)p.sit=SITS[0];const g=grupoOf(p.mat);const known=!!cls(p.mat);
+    const mo=CLASSES.map(c=>`<option${c.nome===(known?cls(p.mat).nome:'')?' selected':''}>${esc(c.nome)}</option>`).join('')+(known?'':`<option selected>${esc(p.mat)}</option>`)+'<option value="__new">+ Novo tipo…</option>';
+    const tr=document.createElement('tr');tr.innerHTML=`<td><input value="${esc(p.pilha)}" data-i="${i}" data-f="pilha" placeholder="ex.: P-01" style="width:80px"></td><td><select data-i="${i}" data-f="mat" style="width:140px">${mo}</select></td><td><span class="tag${known?'':' w'}">${g}</span></td><td><select data-i="${i}" data-f="sit" style="width:120px">${SITS.map(x=>`<option${x===p.sit?' selected':''}>${x}</option>`).join('')}</select></td><td title="${p.file}">${p.file.length>28?p.file.slice(0,26)+'…':p.file}</td><td class="n">${p.r.pts.length}</td><td class="n">${fmt(p.r.area)}</td><td class="n">${fmt(p.r.hmax)}</td><td class="n"><b>${fmt(v)}</b></td><td class="n">${fmt(Math.min(...vs),0)} – ${fmt(Math.max(...vs),0)}</td><td class="n"><input value="${p.dens}" data-i="${i}" data-f="dens" placeholder="—" style="width:70px;text-align:right"></td><td class="n">${isFinite(d)?fmt(v*d,1):'—'}</td><td>${st}</td><td><button data-rm="${i}">✕</button></td>`;
+    tr.onclick=e=>{if(!['INPUT','SELECT','OPTION'].includes(e.target.tagName)&&!e.target.dataset.rm){sel=i;drawSel();pickFmt(piles[i]);}};tb.appendChild(tr);});
+  tb.querySelectorAll('input,select').forEach(el=>el.onchange=()=>{const p=piles[el.dataset.i];
+    if(el.dataset.f==='mat'){if(el.value==='__new'){$('clsDet').open=true;addClass();render();$('clsDet').scrollIntoView({block:'center'});return;}p.mat=el.value;const c=cls(p.mat);if(c&&c.dens&&!p.dens)p.dens=c.dens;}
+    else p[el.dataset.f]=el.value;render();});
+  tb.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{piles.splice(+b.dataset.rm,1);sel=Math.max(0,piles.length-1);render();});
+  // kpis by material
+  const gk=$('grp').value;const by={},cnt={};piles.forEach(p=>{const k=gk==='grupo'?grupoOf(p.mat):gk==='sit'?p.sit:p.mat;by[k]=(by[k]||0)+vol(p);cnt[k]=(cnt[k]||0)+1;});
+  $('kpis').innerHTML=Object.entries(by).map(([k,v])=>`<div class="kpi"><div class="l">${k}</div><div class="v">${fmt(v,1)}</div><div class="l">m³ · ${cnt[k]} pilha(s)</div></div>`).join('')+(piles.length>1?`<div class="kpi"><div class="l">Total</div><div class="v">${fmt(Object.values(by).reduce((a,b)=>a+b,0),1)}</div><div class="l">m³ · ${piles.length} pilhas</div></div>`:'')||'<div class="note">Nenhum levantamento carregado.</div>';
+  ['save','copy','dl'].forEach(id=>$(id).disabled=!piles.length);
+  msg(piles.length?`${piles.length} pilha(s) processada(s). Base: ${$('base').selectedOptions[0].text}.`:'');
+  $('tabs').innerHTML=piles.map((p,i)=>`<button class="${i===sel?'on':''}" data-t="${i}">${esc(p.pilha?p.pilha+' · ':'')}${esc(p.mat)}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=+b.dataset.t;drawSel();pickFmt(piles[sel]);});
+  drawSel();}
+function color(t){const s=[[43,92,138],[63,154,138],[201,184,74],[208,116,46],[168,50,45]];t=Math.max(0,Math.min(1,t))*(s.length-1);const i=Math.min(s.length-2,Math.floor(t)),f=t-i;return`rgb(${s[i].map((c,k)=>Math.round(c+(s[i+1][k]-c)*f)).join(',')})`;}
+function pickFmt(p){if(!p||!p.fmt)return;prevSrc=p.file;FMT=JSON.parse(JSON.stringify(p.fmt));renderFmt();}
+function drawSel(){const cv=$('cv'),g=cv.getContext('2d');const W=cv.width=cv.clientWidth*2,H=cv.height=Math.round(cv.clientWidth*2*0.58);g.clearRect(0,0,W,H);
+  $('tabs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===sel));
+  const p=piles[sel];$('alerts').innerHTML='';if(!p){draw3D(null);$('plantaName').textContent='';$('zmin').textContent=$('zmax').textContent='—';return;}
+  draw3D(p,p===cur3);$('plantaName').textContent=p.mat;$('alerts').innerHTML=p.r.warn.map(w=>`<div>${w}</div>`).join('');
+  const P=p.r.pts;const xs=P.map(q=>q.x),ys=P.map(q=>q.y);const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+  const pad=60,s=Math.min((W-2*pad)/(maxx-minx||1),(H-2*pad)/(maxy-miny||1));const ox=(W-(maxx-minx)*s)/2,oy=(H-(maxy-miny)*s)/2;
+  const X=x=>ox+(x-minx)*s,Y=y=>H-oy-(y-miny)*s;const zs=P.map(q=>q.z),z0=p.r.toeZ.min,z1=Math.max(...zs);
+  $('zmin').textContent=fmt(z0,2)+' m';$('zmax').textContent=fmt(z1,2)+' m';
+  for(const t of p.r.tris){const z=(P[t[0]].z+P[t[1]].z+P[t[2]].z)/3;g.beginPath();t.forEach((i,k)=>k?g.lineTo(X(P[i].x),Y(P[i].y)):g.moveTo(X(P[i].x),Y(P[i].y)));g.closePath();g.fillStyle=color((z-z0)/(z1-z0||1));g.fill();g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=1;g.stroke();}
+  g.beginPath();p.r.poly.forEach((q,k)=>k?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1])));g.closePath();g.strokeStyle=getComputedStyle(document.body).getPropertyValue('--ink');g.lineWidth=3;g.stroke();
+  for(const q of P){g.beginPath();g.arc(X(q.x),Y(q.y),q.toe?6:3,0,7);g.fillStyle=q.toe?'#111':'rgba(0,0,0,.55)';g.fill();}
+  // north + scale
+  g.fillStyle=g.strokeStyle;g.font='bold 24px IBM Plex Sans';g.fillText('N ↑',W-70,40);
+  const sb=Math.pow(10,Math.floor(Math.log10((maxx-minx)/3)));g.fillRect(30,H-30,sb*s,5);g.font='20px IBM Plex Mono';g.fillText(sb+' m',30,H-40);
+  g.fillText(`V = ${fmt(vol(p))} m³ · A = ${fmt(p.r.area)} m²`,30,40);}
+
+// ---------- 3D ----------
+let R3=null,cur3=null;
+function init3D(){if(R3)return R3;if(!window.THREE||!THREE.OrbitControls){$('no3d').style.display='flex';return null;}
+  const el=$('v3d');const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(2,devicePixelRatio));el.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(40,1,0.1,5000);const ctl=new THREE.OrbitControls(cam,renderer.domElement);ctl.enableDamping=true;ctl.dampingFactor=.08;ctl.maxPolarAngle=Math.PI*0.495;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x6b5a45,0.75));const sun=new THREE.DirectionalLight(0xffffff,0.75);sun.position.set(-40,60,30);scene.add(sun);
+  const grp=new THREE.Group();scene.add(grp);
+  const resize=()=>{const w=el.clientWidth,h=el.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();};new ResizeObserver(resize).observe(el);resize();
+  const loop=()=>{requestAnimationFrame(loop);ctl.autoRotate=$('c_rot').checked;ctl.autoRotateSpeed=1.2;ctl.update();renderer.render(scene,cam);};loop();
+  R3={renderer,scene,cam,ctl,grp};return R3;}
+function txtSprite(t,col,k){const c=document.createElement('canvas');c.width=512;c.height=64;const g=c.getContext('2d');g.font='600 28px IBM Plex Sans, sans-serif';g.textAlign='center';g.textBaseline='middle';
+  g.lineWidth=5;g.strokeStyle=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#fff';g.strokeText(t,256,32);g.fillStyle=col;g.fillText(t,256,32);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));k=k||1;s.scale.set(12*k,1.5*k,1);return s;}
+const PAL=['#c9a227','#8d6e63','#5c8fb8','#3f9a8a','#b5651d','#7a5ea8','#a8322d','#5d8a3a','#d0742e','#4b6584','#b8577d','#6b7a2a','#2b5c8a','#9a8f3f'];
+const SITCOL={'Em estoque':'#2e7d4f','Em consumo':'#c9a227','Bloqueada':'#b23b3b','Encerrada':'#8a8f96'};
+function classKey(p,m){return m==='grupo'?grupoOf(p.mat):m==='sit'?(p.sit||SITS[0]):p.mat;}
+function classColor(k,m){if(m==='sit')return SITCOL[k]||'#8a8f96';if(m==='grupo'){const i=GRUPOS.indexOf(k);return i<0?'#8a8f96':PAL[(i*3+2)%PAL.length];}
+  const i=CLASSES.findIndex(c=>c.nome.toLowerCase()===String(k).toLowerCase());if(i>=0)return PAL[i%PAL.length];let h=0;for(const ch of String(k))h=(h*31+ch.charCodeAt(0))>>>0;return PAL[h%PAL.length];}
+let key3='',span3=30,picks=[];
+function draw3D(p,keepView){const R=init3D();if(!R)return;cur3=p;
+  while(R.grp.children.length){const o=R.grp.children.pop();o.geometry&&o.geometry.dispose();if(o.material){o.material.map&&o.material.map.dispose();o.material.dispose&&o.material.dispose();}}
+  picks=[];$('name3d').textContent=p?(p.pilha?p.pilha+' · ':'')+p.mat:'';if(!p){$('hud3d').textContent='';$('cls3d').innerHTML='';return;}
+  const ex=parseFloat($('ex').value);$('exv').textContent=ex.toLocaleString('pt-BR',{minimumFractionDigits:1})+'×';
+  const mode=$('v_col').value,L=$('v_show').value==='all'?piles:[p];
+  const all=L.flatMap(q=>q.r.pts);const cx=(Math.min(...all.map(q=>q.x))+Math.max(...all.map(q=>q.x)))/2,cy=(Math.min(...all.map(q=>q.y))+Math.max(...all.map(q=>q.y)))/2;
+  const z0=Math.min(...L.map(q=>q.r.toeZ.min)),z1=Math.max(...all.map(q=>q.z));
+  const span=Math.max(...all.map(q=>Math.abs(q.x-cx)),...all.map(q=>Math.abs(q.y-cy)))*2;span3=span;const lk=Math.max(1,span/32);
+  const V=(x,y,z)=>[x-cx,(z-z0)*ex,-(y-cy)];const ink=getComputedStyle(document.body).getPropertyValue('--ink').trim()||'#222',acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#b5651d';
+  const tmp=new THREE.Color(),dark=new THREE.Color();
+  for(const q of L){const P=q.r.pts,isSel=q===p,i=piles.indexOf(q);const pz0=q.r.toeZ.min,pz1=Math.max(...P.map(a=>a.z));
+    const base=new THREE.Color(classColor(classKey(q,mode),mode));dark.copy(base).multiplyScalar(.62);
+    const pos=[],colr=[];
+    for(const t of q.r.tris)for(const j of t){const a=P[j];pos.push(...V(a.x,a.y,a.z));
+      if(mode==='cota')tmp.set(color((a.z-z0)/(z1-z0||1)));else tmp.copy(dark).lerp(base,Math.max(0,Math.min(1,(a.z-pz0)/(pz1-pz0||1))));colr.push(tmp.r,tmp.g,tmp.b);}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colr,3));g.computeVertexNormals();
+    const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.9,metalness:0,flatShading:true,transparent:!isSel&&L.length>1,opacity:!isSel&&L.length>1?.82:1}));mesh.userData.i=i;R.grp.add(mesh);picks.push(mesh);
+    if($('c_wire').checked)R.grp.add(new THREE.LineSegments(new THREE.WireframeGeometry(g),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.28})));
+    if($('c_base').checked&&q.r.baseTris){const bp=[];for(const t of q.r.baseTris)for(const v of t)bp.push(...V(v[0],v[1],v[2]));const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(bp,3));
+      R.grp.add(new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0x8a7f70,transparent:true,opacity:.35,side:THREE.DoubleSide,depthWrite:false})));
+      R.grp.add(new THREE.LineSegments(new THREE.WireframeGeometry(bg),new THREE.LineBasicMaterial({color:0x8a7f70,transparent:true,opacity:.45})));}
+    const ol=q.r.poly.map(a=>{const t=P.find(r=>Math.abs(r.x-a[0])<1e-6&&Math.abs(r.y-a[1])<1e-6);return new THREE.Vector3(...V(a[0],a[1],t?t.z:pz0));});ol.push(ol[0].clone());
+    R.grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ol),new THREE.LineBasicMaterial({color:isSel&&L.length>1?new THREE.Color(acc):0x111111})));
+    if(isSel&&L.length>1){const o2=ol.map(v=>v.clone().setY(v.y+0.08*lk));R.grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(o2),new THREE.LineBasicMaterial({color:new THREE.Color(acc)})));}
+    if($('c_pts').checked){const tp=[],sp=[];P.forEach(a=>(a.toe?tp:sp).push(...V(a.x,a.y,a.z)));
+      for(const[a,c,sz]of[[tp,0x111111,.35],[sp,0x222222,.18]]){const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(a,3));R.grp.add(new THREE.Points(pg,new THREE.PointsMaterial({color:c,size:sz})));}}
+    const top=P.reduce((a,b)=>b.z>a.z?b:a);const txt=L.length>1||mode!=='cota'?`${q.pilha?q.pilha+' · ':''}${q.mat} · ${fmt(vol(q),0)} m³`:`topo ${fmt(top.z,2)} m`;
+    const lab=txtSprite(txt,isSel&&L.length>1?acc:ink,lk);lab.position.set(...V(top.x,top.y,top.z));lab.position.y+=1.3*lk;R.grp.add(lab);}
+  const grid=new THREE.GridHelper(Math.ceil(span/5)*5+10,Math.min(60,Math.ceil(span/5)+2),0x999999,0xcccccc);grid.position.y=-0.02;grid.material.transparent=true;grid.material.opacity=.35;R.grp.add(grid);
+  const n=txtSprite('N',acc,lk);n.position.set(0,0.5,-span/2-3*lk);R.grp.add(n);
+  const z1p=Math.max(...p.r.pts.map(a=>a.z));
+  $('hud3d').innerHTML=`${esc(p.pilha?p.pilha+' · ':'')}${esc(p.mat)} · V = ${fmt(vol(p))} m³<br>A base = ${fmt(p.r.area)} m² · H máx = ${fmt(p.r.hmax)} m<br>pé ${fmt(p.r.toeZ.min)}–${fmt(p.r.toeZ.max)} m · topo ${fmt(z1p)} m`;
+  panel3D(p,L,mode);
+  const key=$('v_show').value+'|'+L.map(q=>q.file).join('|');if(!(keepView===true)&&key!==key3)resetView();key3=key;}
+function panel3D(p,L,mode){const el=$('cls3d'),i=piles.indexOf(p),known=!!cls(p.mat);
+  const mo=CLASSES.map(c=>`<option${known&&c.nome===cls(p.mat).nome?' selected':''}>${esc(c.nome)}</option>`).join('')+(known?'':`<option selected>${esc(p.mat)}</option>`)+'<option value="__new">+ Novo tipo…</option>';
+  const m2=mode==='cota'?'mat':mode;const by={},cnt={};L.forEach(q=>{const k=classKey(q,m2);by[k]=(by[k]||0)+vol(q);cnt[k]=(cnt[k]||0)+1;});
+  el.innerHTML=`<div style="font-weight:600;margin-bottom:6px">Classificar pilha selecionada</div>
+    <label>Identificação</label><input id="p3_pilha" value="${esc(p.pilha||'')}" placeholder="ex.: P-01">
+    <label style="margin-top:6px">Tipo de agregado</label><select id="p3_mat">${mo}</select>
+    <div style="border-top:1px solid var(--line);margin:10px 0 6px;padding-top:8px;font-weight:600">Legenda — tipo</div>
+    ${mode==='cota'?'<div class="note" style="margin-bottom:4px">Cores por cota; totais por tipo:</div>':''}
+    ${Object.keys(by).map(k=>`<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><i style="width:11px;height:11px;border-radius:3px;flex:none;background:${mode==='cota'?'var(--line)':classColor(k,m2)}"></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}${cnt[k]>1?` (${cnt[k]})`:''}</span><span style="font-family:'IBM Plex Mono',monospace">${fmt(by[k],0)} m³</span></div>`).join('')}`;
+  $('p3_pilha').onchange=e=>{p.pilha=e.target.value.trim();render();};
+  $('p3_mat').onchange=e=>{if(e.target.value==='__new'){$('clsDet').open=true;addClass();render();$('clsDet').scrollIntoView({block:'center'});return;}p.mat=e.target.value;const c=cls(p.mat);if(c&&c.dens&&!p.dens)p.dens=c.dens;render();};}
+function resetView(){if(!R3||!cur3)return;const s=span3;R3.cam.position.set(s*0.85,s*0.6,s*0.95);R3.ctl.target.set(0,cur3.r.hmax*parseFloat($('ex').value)*0.3,0);R3.ctl.update();}
+['ex','c_base','c_wire','c_pts','v_col'].forEach(id=>$(id).addEventListener('input',()=>draw3D(cur3,true)));$('v_show').addEventListener('input',()=>draw3D(cur3));$('reset3d').onclick=()=>resetView();
+(()=>{const el=$('v3d');let d=null;el.addEventListener('pointerdown',e=>{d=[e.clientX,e.clientY];});
+  el.addEventListener('pointerup',e=>{if(!d||!R3||e.target!==R3.renderer.domElement||Math.hypot(e.clientX-d[0],e.clientY-d[1])>5)return;const r=el.getBoundingClientRect();
+    const rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height*2-1)),R3.cam);const h=rc.intersectObjects(picks)[0];
+    if(h&&h.object.userData.i!==sel){sel=h.object.userData.i;render();pickFmt(piles[sel]);}});})();
+
+// ---------- classificações ----------
+function saveClasses(){try{localStorage.setItem('cub_classes',JSON.stringify(CLASSES));}catch(e){}
+  if(db)db.doc('config/classes').set({lista:CLASSES}).catch(()=>msg('Sem permissão para salvar classificações compartilhadas.','var(--bad)'));}
+function addClass(){let n='Novo tipo',k=1;while(cls(n))n='Novo tipo '+(++k);CLASSES.push({nome:n,grupo:'Outros',dens:''});saveClasses();renderClasses();const i=$('clsTbl').querySelectorAll('tbody input[data-f="nome"]');const el=i[i.length-1];if(el){el.focus();el.select();}}
+function renderClasses(){const tb=$('clsTbl').querySelector('tbody');
+  tb.innerHTML=CLASSES.map((c,i)=>`<tr><td><input data-i="${i}" data-f="nome" value="${esc(c.nome)}" style="width:180px"></td><td><select data-i="${i}" data-f="grupo" style="width:170px">${GRUPOS.map(g=>`<option${g===c.grupo?' selected':''}>${g}</option>`).join('')}</select></td><td class="n"><input data-i="${i}" data-f="dens" value="${esc(c.dens)}" placeholder="—" style="width:80px;text-align:right"></td><td><button data-rmc="${i}">✕</button></td></tr>`).join('');
+  tb.querySelectorAll('input,select').forEach(el=>el.onchange=()=>{const c=CLASSES[el.dataset.i],f=el.dataset.f;let v=el.value.trim();
+    if(f==='nome'){if(!v||(cls(v)&&cls(v)!==c)){msg('Nome de tipo vazio ou já existente.','var(--bad)');renderClasses();return;}piles.forEach(p=>{if(p.mat===c.nome)p.mat=v;});}
+    if(f==='dens'&&v)piles.forEach(p=>{if(p.mat===c.nome&&!p.dens)p.dens=v;});
+    c[f]=v;saveClasses();renderClasses();render();});
+  tb.querySelectorAll('[data-rmc]').forEach(b=>b.onclick=()=>{CLASSES.splice(+b.dataset.rmc,1);saveClasses();renderClasses();render();});}
+$('clsAdd').onclick=addClass;$('grp').onchange=()=>render();$('hf_mat').onchange=()=>renderHist();$('hf_grp').onchange=()=>renderHist();
+
+// ---------- export ----------
+function csv(){const b=$('base').selectedOptions[0].text;return['Data;Local;Pilha;Tipo_agregado;Arquivo;Pontos;Area_base_m2;Altura_max_m;Volume_m3;Densidade_t_m3;Massa_t;Metodo_base']
+  .concat(piles.map(p=>{const v=vol(p),d=parseFloat(String(p.dens).replace(',','.'));return[$('dt').value||p.date,$('loc').value,p.pilha||'',p.mat,p.file,p.r.pts.length,fmt(p.r.area),fmt(p.r.hmax),fmt(v),isFinite(d)?fmt(d,3):'',isFinite(d)?fmt(v*d,1):'',b].join(';');})).join('\n');}
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(csv().replace(/;/g,'\t'));msg('Tabela copiada — cole no Excel.','var(--ok)');}catch(e){msg('Não foi possível copiar neste navegador.','var(--bad)');}};
+let downloads=null;$('dl').hidden=false;$('dl').onclick=async()=>{const fn=`cubacao_agregados_${$('dt').value||'sem_data'}.csv`,data='﻿'+csv();
+  if(!downloads){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));a.download=fn;document.body.appendChild(a);a.click();a.remove();return;}
+  try{await downloads.save({filename:fn,data});}catch(e){msg('Download cancelado.','var(--mut)');}};
+
+// ---------- history (shared db, fallback local) ----------
+let db=null,hist=[];
+function renderHist(){const tb=$('hist').querySelector('tbody');const gOf=r=>r.grupo||grupoOf(r.agregado);
+  const h=[...hist].sort((a,b)=>((a.data||'')+(a.salvo_em||'')).localeCompare((b.data||'')+(b.salvo_em||'')));const last={};
+  let rows=h.map(r=>{const k=r.agregado+'|'+(r.pilha||'');const prev=last[k];last[k]=r.volume;return{...r,delta:prev==null?null:r.volume-prev};}).reverse();
+  const fill=(id,all,vals)=>{const el=$(id),cur=el.value;el.innerHTML=`<option value="">${all}</option>`+[...new Set(vals)].sort().map(v=>`<option>${esc(v)}</option>`).join('');el.value=[...el.options].some(o=>o.value===cur)?cur:'';};
+  fill('hf_mat','Todos os tipos',hist.map(r=>r.agregado));fill('hf_grp','Todos os grupos',hist.map(gOf));
+  const fm=$('hf_mat').value,fg=$('hf_grp').value;rows=rows.filter(r=>(!fm||r.agregado===fm)&&(!fg||gOf(r)===fg));
+  tb.innerHTML=rows.map(r=>`<tr><td>${r.data?r.data.split('-').reverse().join('/'):'—'}</td><td>${esc(r.pilha||'—')}</td><td>${esc(r.agregado)}</td><td><span class="tag">${esc(gOf(r))}</span></td><td>${esc(r.situacao||'—')}</td><td>${esc(r.local||'')}</td><td class="n">${fmt(r.volume)}</td><td class="n" style="color:${r.delta==null?'':r.delta<0?'var(--bad)':'var(--ok)'}">${r.delta==null?'—':(r.delta>0?'+':'')+fmt(r.delta)}</td><td class="n">${r.massa?fmt(r.massa,1):'—'}</td><td>${esc(r.metodo||'')}</td><td>${esc(r.arquivo||'')}</td><td><button data-del="${r._id}">✕</button></td></tr>`).join('');
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delHist(b.dataset.del));
+  $('histNote').textContent=hist.length?'':(db?'Nenhuma cubação salva ainda.':'Histórico salvo apenas neste navegador.');}
+function lsGet(){try{return JSON.parse(localStorage.getItem('cub_hist')||'[]');}catch(e){return[];}}
+function lsSet(){try{localStorage.setItem('cub_hist',JSON.stringify(hist));}catch(e){}}
+async function delHist(id){if(db){try{await db.doc('cubacoes/'+id).delete();}catch(e){msg('Sem permissão para excluir.','var(--bad)');}}else{hist=hist.filter(h=>h._id!==id);lsSet();renderHist();}}
+$('save').onclick=async()=>{const b=$('base').selectedOptions[0].text;let n=0;
+  for(const p of piles){const v=vol(p),d=parseFloat(String(p.dens).replace(',','.'));const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const rec={data:$('dt').value||p.date||'',local:$('loc').value,agregado:p.mat,grupo:grupoOf(p.mat),pilha:p.pilha||'',situacao:p.sit||'',arquivo:p.file,volume:+v.toFixed(3),area:+p.r.area.toFixed(2),hmax:+p.r.hmax.toFixed(2),densidade:isFinite(d)?d:null,massa:isFinite(d)?+(v*d).toFixed(2):null,metodo:b,pontos:p.r.pts.length,salvo_em:new Date().toISOString()};
+    if(db){try{await db.doc('cubacoes/'+id).set(rec);n++;}catch(e){msg('Sem permissão para gravar no histórico compartilhado.','var(--bad)');return;}}else{hist.push({...rec,_id:id});n++;}}
+  if(!db){lsSet();renderHist();}msg(`${n} cubação(ões) salva(s) no histórico.`,'var(--ok)');};
+
+(async()=>{try{const c=JSON.parse(localStorage.getItem('cub_classes')||'null');if(Array.isArray(c)&&c.length)CLASSES=c;}catch(e){}renderClasses();render();
+  try{userFmts=JSON.parse(localStorage.getItem('cub_fmts')||'[]');const c=JSON.parse(localStorage.getItem('cub_fmt_cur')||'null');if(c&&c.cols)FMT=c;}catch(e){}renderFmt();
+  hist=lsGet().map(h=>({...h,_id:h._id||Math.random().toString(36).slice(2)}));renderHist();
+  if(!window.claude||!claude.use)return;
+  try{downloads=await claude.use('downloads');if(downloads)$('dl').hidden=false;}catch(e){}
+  try{db=await claude.use('db');}catch(e){db=null;}
+  if(db){const to=setTimeout(()=>{$('histNote').textContent='Histórico indisponível no momento.';},10000);
+    try{db.doc('config/classes').onSnapshot(d=>{const v=d&&d.exists!==false&&d.data&&d.data();if(v&&Array.isArray(v.lista)&&v.lista.length){CLASSES=v.lista;renderClasses();render();renderHist();}},()=>{});}catch(e){}
+    try{db.collection('formatos').onSnapshot(s=>{userFmts=s.docs.map(d=>({...d.data(),_id:d.id}));renderFmt();},()=>{});}catch(e){}
+    try{db.collection('cubacoes').onSnapshot(s=>{clearTimeout(to);hist=s.docs.map(d=>({...d.data(),_id:d.id}));renderHist();},e=>{clearTimeout(to);$('histNote').textContent='Histórico indisponível.';});}catch(e){clearTimeout(to);}}
+})();
+
+// ---------- perfis ----------
+let ROLE='ADM',roleKnown=false;const RL={LEITOR:0,EDITOR:1,ADM:2};const atLeast=r=>RL[ROLE]>=RL[r];
+function applyRole(){const ed=atLeast('EDITOR'),ad=atLeast('ADM');
+  $('roleTag').textContent='perfil: '+(roleKnown?ROLE:'…');$('roleTag').className='tag'+(ROLE==='LEITOR'?' w':'');
+  if(!ed){$('save').disabled=true;$('save').title='Perfil LEITOR não salva no histórico';}else $('save').title='';
+  $('f_save').disabled=!ed;$('f_name').disabled=!ed;if(!ad)$('f_del').disabled=true;
+  $('clsAdd').disabled=!ed;$('clsTbl').querySelectorAll('tbody input,tbody select').forEach(e=>e.disabled=!ed);
+  document.querySelectorAll('[data-rmc],[data-del]').forEach(b=>b.style.display=ad?'':'none');
+  document.querySelectorAll('option[value="__new"]').forEach(o=>o.hidden=o.disabled=!ed);}
+{const w=n=>{const f=window[n];window[n]=function(){const r=f.apply(this,arguments);try{applyRole();}catch(e){}return r;};};['render','renderHist','renderClasses','renderFmt','draw3D'].forEach(w);}
+async function detectRole(){let user=null;try{user=window.claude&&claude.use?await claude.use('user'):null;}catch(e){}
+  if(!user){ROLE='ADM';roleKnown=true;$('roleMsg').textContent='página aberta fora do compartilhamento: uso local, sem restrições e sem histórico compartilhado.';applyRole();return;}
+  let adm=false,wr=null;try{adm=(await user.isOwner())||(await user.canEdit());}catch(e){}try{wr=await user.can('data.write');}catch(e){}
+  ROLE=adm?'ADM':wr===false?'LEITOR':'EDITOR';roleKnown=true;
+  $('roleMsg').textContent='seu perfil é '+ROLE+({LEITOR:': você calcula e consulta, mas não salva.',EDITOR:': você salva cubações, formatos e tipos de agregado.',ADM:': você gerencia tudo, inclusive exclusões e o perfil de cada pessoa.'})[ROLE];applyRole();}
+detectRole();
+
+// ---------- events ----------
+const dz=$('drop');dz.onclick=()=>$('file').click();$('file').onchange=e=>handle([...e.target.files]);
+dz.ondragover=e=>{e.preventDefault();dz.classList.add('on');};dz.ondragleave=()=>dz.classList.remove('on');dz.ondrop=e=>{e.preventDefault();dz.classList.remove('on');handle([...e.dataTransfer.files]);};
+$('base').onchange=render;
+window.onresize=drawSel;
+// seed: levantamento AREIA 11/11/2026
+const SEED=`1,pe,9542638.914,275256.321,838.813
+2,pe,9542640.210,275254.608,838.858
+3,pe,9542641.502,275251.465,839.220
+4,pe,9542642.067,275249.081,839.288
+5,pe,9542642.543,275245.531,839.431
+6,pe,9542641.738,275242.195,839.360
+7,pe,9542640.603,275239.813,839.344
+8,pe,9542638.279,275237.359,839.395
+9,pe,9542635.129,275236.182,839.202
+10,pe,9542632.766,275235.121,839.144
+11,pe,9542629.106,275235.016,839.044
+12,pe,9542626.616,275235.671,839.114
+13,pe,9542624.899,275236.753,839.003
+14,pe,9542622.892,275237.674,839.192
+15,pe,9542621.405,275239.625,839.034
+16,pe,9542619.708,275241.616,839.088
+17,pe,9542618.105,275244.669,838.760
+18,pe,9542617.463,275246.878,838.989
+19,pe,9542618.200,275249.680,838.781
+20,pe,9542618.823,275250.820,839.100
+21,pe,9542620.979,275251.445,838.600
+22,pe,9542624.241,275252.792,838.743
+23,pe,9542626.235,275253.749,838.915
+24,pe,9542628.317,275254.707,838.994
+25,pe,9542629.205,275254.860,838.809
+26,pe,9542631.460,275255.373,838.938
+27,pe,9542633.061,275256.836,838.858
+28,pe,9542635.879,275257.263,839.009
+29,crista,9542635.583,275252.822,841.710
+30,crista,9542635.574,275252.575,841.826
+31,crista,9542635.856,275252.588,841.383
+32,crista,9542637.434,275251.009,840.807
+33,crista,9542637.828,275250.016,841.031
+34,crista,9542638.151,275248.882,841.114
+35,crista,9542638.360,275247.890,841.286
+36,crista,9542638.456,275246.657,840.935
+37,crista,9542638.035,275244.494,841.712
+38,crista,9542637.667,275243.408,841.624
+39,crista,9542635.976,275241.682,841.982
+40,crista,9542634.820,275240.992,841.629
+41,crista,9542632.885,275240.377,842.224
+42,crista,9542631.903,275240.142,841.939
+43,crista,9542629.516,275240.014,841.945
+44,crista,9542628.090,275240.177,841.705
+45,crista,9542626.843,275240.607,841.364
+46,crista,9542625.565,275241.270,841.293
+47,crista,9542624.545,275241.959,841.137
+48,crista,9542623.338,275243.948,841.429
+49,crista,9542622.396,275245.158,840.822
+50,crista,9542622.396,275245.158,840.822
+51,crista,9542621.860,275246.180,840.939
+52,crista,9542621.432,275247.160,841.071
+53,crista,9542623.446,275247.704,841.849
+54,crista,9542623.446,275247.704,841.849
+55,crista,9542624.058,275247.491,841.747
+56,crista,9542624.778,275247.450,841.718
+57,crista,9542624.778,275247.450,841.718
+58,crista,9542625.704,275248.483,840.990
+59,crista,9542625.704,275248.483,840.990
+60,crista,9542626.195,275249.694,840.780
+61,crista,9542626.195,275249.694,840.780
+62,crista,9542627.284,275250.245,841.031
+63,crista,9542628.088,275249.682,841.609
+64,crista,9542628.505,275249.058,842.073
+65,crista,9542628.505,275249.058,842.073
+66,crista,9542629.458,275249.051,841.713
+67,crista,9542629.942,275249.630,841.538
+68,crista,9542629.942,275249.630,841.538
+69,crista,9542630.667,275250.393,841.606
+70,crista,9542631.419,275250.982,841.512
+71,crista,9542632.452,275251.099,841.659
+72,crista,9542633.321,275251.312,841.710
+73,crista,9542634.287,275251.520,841.833
+74,crista,9542634.195,275250.737,842.056
+75,crista,9542634.195,275250.737,842.056
+76,crista,9542633.468,275249.358,842.122
+77,crista,9542632.809,275248.637,842.077
+78,crista,9542631.728,275248.133,842.343
+79,crista,9542630.558,275247.720,842.345
+80,crista,9542629.482,275247.315,842.235
+81,crista,9542627.271,275246.335,842.412
+82,crista,9542626.631,275245.641,842.133
+83,crista,9542626.288,275244.779,842.197
+84,crista,9542626.288,275244.779,842.197
+85,crista,9542627.366,275242.949,842.549
+86,crista,9542628.073,275242.462,842.752
+87,crista,9542629.023,275242.059,842.896
+88,crista,9542630.879,275241.706,842.891
+89,crista,9542631.868,275241.640,842.508
+90,crista,9542632.835,275241.736,842.578
+91,crista,9542633.722,275242.220,842.494
+92,crista,9542634.200,275242.917,842.747
+93,crista,9542634.386,275243.473,842.962
+94,crista,9542635.305,275243.731,842.190
+95,crista,9542634.836,275244.540,843.137
+96,crista,9542635.745,275245.119,842.509
+97,crista,9542635.479,275245.760,842.922
+98,crista,9542635.910,275246.634,842.742
+99,crista,9542635.910,275246.634,842.742
+100,crista,9542635.360,275247.163,842.907
+101,crista,9542636.004,275248.038,842.212
+102,crista,9542635.793,275248.690,842.330
+103,crista,9542634.746,275249.225,842.761
+104,crista,9542634.418,275247.759,842.703
+105,crista,9542634.095,275246.832,842.959
+106,crista,9542633.829,275245.625,842.569
+107,crista,9542633.507,275244.778,842.640
+108,crista,9542632.779,275243.749,842.116
+109,crista,9542631.993,275243.173,842.606
+110,crista,9542631.043,275242.790,843.003
+111,crista,9542630.092,275242.680,843.098
+112,crista,9542629.211,275243.178,842.911
+113,crista,9542628.289,275243.909,842.761
+114,crista,9542626.959,275245.550,842.141
+115,crista,9542627.154,275246.254,842.342
+116,crista,9542628.490,275247.696,842.028
+117,crista,9542629.870,275246.964,842.417
+118,crista,9542629.870,275246.964,842.417
+119,crista,9542630.127,275246.354,842.131
+120,crista,9542630.606,275245.508,842.114
+121,crista,9542631.471,275244.964,841.841
+122,crista,9542631.613,275245.368,841.775
+123,crista,9542632.048,275246.094,841.627
+124,crista,9542632.872,275246.890,842.012`;
+(()=>{const rec={file:'AREIA_2026-11-11-15-49-27.txt',mat:'Areia',date:'2026-11-11',dens:'',raw:SEED,fmt:JSON.parse(JSON.stringify(PRESETS[0]))};try{const rows=parse(SEED,rec.fmt);piles.push({...rec,rows,r:compute(rows)});}catch(e){pend.push({...rec,err:e.message});}$('dt').value='2026-11-11';prevSrc=rec.file;render();renderFmt();})();
+</script>
+</body>
+</html>
